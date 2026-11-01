@@ -29,3 +29,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: End-to-end tests
         run: npm run test:e2e
+      - name: Trigger deployment
+        if: ${{ github.event_name == 'push' }}
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl --fail --silent --show-error --output /dev/null -X POST "$DEPLOY_HOOK"
