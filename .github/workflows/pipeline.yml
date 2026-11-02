@@ -30,14 +30,14 @@ jobs:
       - name: End-to-end tests
         run: npm run test:e2e
       - name: Trigger deployment
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         env:
           DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: curl --fail --silent --show-error --output /dev/null -X POST "$DEPLOY_HOOK"
 
   tag_release:
     needs: [simple_deployment_pipeline]
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
