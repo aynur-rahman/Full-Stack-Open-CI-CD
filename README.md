@@ -15,3 +15,8 @@ Start by running `npm install` inside the project folder
 ## Deployment
 
 The app is deployed to Render at https://fso-cicd-pokedex.onrender.com. The GitHub Actions pipeline deploys every push to `main` that passes all checks, and Render uses the `/health` endpoint as its health check.
+
+## Pull requests
+
+The same pipeline runs for pull requests to `main`, so changes are linted, built and tested before they are merged.
+Deployment only runs for pushes and merges to `main`, never for pull requests.
