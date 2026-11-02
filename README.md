@@ -24,3 +24,4 @@ Deployment only runs for pushes and merges to `main`, never for pull requests.
 ## Versioning
 
 Every merge to `main` that passes the pipeline is tagged with a new patch version (for example `v0.0.1`).
+A merge whose commit messages contain `#skip` is neither deployed nor tagged.
