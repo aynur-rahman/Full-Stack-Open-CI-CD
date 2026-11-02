@@ -20,3 +20,7 @@ The app is deployed to Render at https://fso-cicd-pokedex.onrender.com. The GitH
 
 The same pipeline runs for pull requests to `main`, so changes are linted, built and tested before they are merged.
 Deployment only runs for pushes and merges to `main`, never for pull requests.
+
+## Versioning
+
+Every merge to `main` that passes the pipeline is tagged with a new patch version (for example `v0.0.1`).
