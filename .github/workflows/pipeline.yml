@@ -34,6 +34,29 @@ jobs:
         env:
           DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: curl --fail --silent --show-error --output /dev/null -X POST "$DEPLOY_HOOK"
+      - name: Notify deployment success
+        if: ${{ success() && github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
+        uses: sarisia/actions-status-discord@eb045afee445dc055c18d3d90bd0f244fd062708 # v1.16.0
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          nofail: false
+          status: success
+          title: New version of Pokedex deployed
+          description: "https://fso-cicd-pokedex.onrender.com now runs ${{ github.sha }} by ${{ github.actor }}."
+          url: https://fso-cicd-pokedex.onrender.com
+      - name: Notify build failure
+        if: ${{ failure() }}
+        uses: sarisia/actions-status-discord@eb045afee445dc055c18d3d90bd0f244fd062708 # v1.16.0
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          nofail: false
+          status: failure
+          title: Pokedex build failed
+          description: |
+            Commit ${{ github.event.pull_request.head.sha || github.sha }} by ${{ github.actor }} broke the build.
+            Message: ${{ github.event.head_commit.message || github.event.pull_request.title }}
+            Branch: ${{ github.head_ref || github.ref_name }}
+          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   tag_release:
     needs: [simple_deployment_pipeline]
