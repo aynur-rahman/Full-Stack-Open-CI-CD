@@ -60,3 +60,5 @@ const PokemonPage = ({ previous, next }) => {
 }
 
 export default PokemonPage
+
+console.log('checking the failure notification')
