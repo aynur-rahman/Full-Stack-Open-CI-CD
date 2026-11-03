@@ -9,7 +9,7 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  simple_deployment_pipeline:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -21,21 +21,71 @@ jobs:
         run: npm ci
       - name: Check style
         run: npm run eslint
-      - name: Build
-        run: npm run build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
       - name: Test
         run: npm test
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Save the build for later jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist
+          if-no-files-found: error
+          retention-days: 3
+
+  e2e:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Get the build of this commit
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
       - name: End-to-end tests
         run: npm run test:e2e
+
+  deploy:
+    needs: [lint, test, e2e]
+    if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Trigger deployment
-        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         env:
           DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: curl --fail --silent --show-error --output /dev/null -X POST "$DEPLOY_HOOK"
       - name: Notify deployment success
-        if: ${{ success() && github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         uses: sarisia/actions-status-discord@eb045afee445dc055c18d3d90bd0f244fd062708 # v1.16.0
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK }}
@@ -44,22 +94,9 @@ jobs:
           title: New version of Pokedex deployed
           description: "https://fso-cicd-pokedex.onrender.com now runs ${{ github.sha }} by ${{ github.actor }}."
           url: https://fso-cicd-pokedex.onrender.com
-      - name: Notify build failure
-        if: ${{ failure() }}
-        uses: sarisia/actions-status-discord@eb045afee445dc055c18d3d90bd0f244fd062708 # v1.16.0
-        with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK }}
-          nofail: false
-          status: failure
-          title: Pokedex build failed
-          description: |
-            Commit ${{ github.event.pull_request.head.sha || github.sha }} by ${{ github.actor }} broke the build.
-            Message: ${{ github.event.head_commit.message || github.event.pull_request.title }}
-            Branch: ${{ github.head_ref || github.ref_name }}
-          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   tag_release:
-    needs: [simple_deployment_pipeline]
+    needs: [deploy]
     if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
     runs-on: ubuntu-latest
     permissions:
@@ -74,3 +111,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BUMP: patch
           WITH_V: true
+
+  notify_failure:
+    needs: [lint, test, build, e2e, deploy, tag_release]
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify build failure
+        uses: sarisia/actions-status-discord@eb045afee445dc055c18d3d90bd0f244fd062708 # v1.16.0
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          nofail: false
+          status: failure
+          title: Pokedex build failed
+          description: |
+            Commit ${{ github.event.pull_request.head.sha || github.sha }} by ${{ github.actor }} broke the build.
+            Message: ${{ github.event.head_commit.message || github.event.pull_request.title }}
+            Branch: ${{ github.head_ref || github.ref_name }}
+            Job results: lint ${{ needs.lint.result }}, test ${{ needs.test.result }}, build ${{ needs.build.result }}, e2e ${{ needs.e2e.result }}, deploy ${{ needs.deploy.result }}
+          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
