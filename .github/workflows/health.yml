@@ -1,0 +1,21 @@
+name: Periodic health check
+
+on:
+  schedule:
+    - cron: '37 6 * * *'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Address to check
+        default: https://fso-cicd-pokedex.onrender.com/health
+
+jobs:
+  health_check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the deployed app
+        uses: jtalk/url-health-check-action@e7d5ebdc9027fbf494d2d034f3e8fc78f8b7a2b9 # v5
+        with:
+          url: ${{ inputs.url || 'https://fso-cicd-pokedex.onrender.com/health' }}
+          max-attempts: 3
+          retry-delay: 30s
