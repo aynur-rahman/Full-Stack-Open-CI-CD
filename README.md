@@ -27,3 +27,8 @@ Every merge to `main` that passes the pipeline is tagged with a new patch versio
 A merge whose commit messages contain `#skip` is neither deployed nor tagged.
 
 This README change was merged with `#skip`, so it was not deployed or tagged.
+
+## Links
+
+- Live Pokedex: https://fso-cicd-pokedex.onrender.com
+- My own app's pipeline (exercises 11.21–11.22): https://github.com/aynur-rahman/Full-Stack-Open-CI-CD-Bloglist, live at https://fso-cicd-bloglist.onrender.com
